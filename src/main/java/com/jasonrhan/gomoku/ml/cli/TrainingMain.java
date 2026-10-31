@@ -73,10 +73,14 @@ public final class TrainingMain {
             throws Exception {
         String url = required(options, "url");
         Path output = Path.of(options.getOrDefault("output", "./downloads"));
+        String token = options.getOrDefault(
+                "token",
+                System.getenv().getOrDefault("GOMOKU_DATA_TOKEN", "")
+        );
         DataDownloadClient.download(
                 url.replaceAll("/+$", ""),
                 output,
-                options.getOrDefault("token", "")
+                token
         );
     }
 

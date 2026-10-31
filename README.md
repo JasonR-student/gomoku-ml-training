@@ -53,6 +53,24 @@ Each file is named like:
 games-0000000-0000100.jsonl.gz
 ```
 
+## One-command downloader
+
+On Linux, install the repository command once:
+
+```bash
+sudo ln -sf "$(pwd)/gomoku" /usr/local/bin/gomoku
+gomoku config
+gomoku download
+```
+
+The first `gomoku download` also asks for the server URL if it has not been
+configured. Every download asks for the password without displaying it and
+does not save the password. The server URL is stored in
+`~/.config/gomoku/client.conf`.
+
+On Windows, run `gomoku.cmd download` from the repository directory, or add
+the repository directory to `PATH`.
+
 ## Resume training
 
 ```bash

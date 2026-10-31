@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_PATH="$(readlink -f "$0")"
+PROJECT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+JAR="$PROJECT_DIR/target/gomoku-ml-training-1.0.0.jar"
+CONFIG_DIR="${GOMOKU_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/gomoku}"
+CONFIG_FILE="$CONFIG_DIR/client.conf"
+
+read_config() {
+  local key="$1"
+  if [[ -f "$CONFIG_FILE" ]]; then
+    awk -F= -v wanted="$key" '$1 == wanted {print substr($0, index($0, "=") + 1)}' "$CONFIG_FILE" | tail -n 1
+  fi
+}
+
+save_server_url() {
+  mkdir -p "$CONFIG_DIR"
+  {
+    echo "SERVER_URL=$1"
+  } > "$CONFIG_FILE"
+  chmod 600 "$CONFIG_FILE"
+}
+
+ensure_jar() {
+  if [[ ! -f "$JAR" ]]; then
+    echo "Training jar not found. Building it with Maven..."
+    (cd "$PROJECT_DIR" && mvn -q -DskipTests package)
+  fi
+}
+
+download_data() {
+  local server_url="${GOMOKU_SERVER_URL:-$(read_config SERVER_URL)}"
+  if [[ -z "$server_url" ]]; then
+    read -r -p "Server URL (for example http://SERVER_IP:5000): " server_url
+    if [[ -z "$server_url" ]]; then
+      echo "Server URL is required." >&2
+      exit 2
+    fi
+    save_server_url "$server_url"
+  fi
+
+  local output_dir="${GOMOKU_DOWNLOAD_DIR:-$PWD/gomoku-downloads}"
+  read -r -s -p "Password: " password
+  echo
+  ensure_jar
+  GOMOKU_DATA_TOKEN="$password" \
+    java -jar "$JAR" download-data \
+      --url "$server_url" \
+      --output "$output_dir"
+  unset password
+}
+
+case "${1:-download}" in
+  download)
+    download_data
+    ;;
+  config)
+    read -r -p "Server URL (for example http://SERVER_IP:5000): " server_url
+    [[ -n "$server_url" ]] || { echo "Server URL is required." >&2; exit 2; }
+    save_server_url "$server_url"
+    echo "Saved server URL to $CONFIG_FILE"
+    ;;
+  help|--help|-h)
+    echo "Usage: gomoku download"
+    echo "       gomoku config"
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    echo "Usage: gomoku download" >&2
+    exit 2
+    ;;
+esac
